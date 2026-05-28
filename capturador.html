@@ -405,7 +405,19 @@
     <div id="pane-url">
       <div class="input-group">
         <label>URL o link del reel</label>
-        <input type="url" id="url-input" placeholder="https://www.instagram.com/reel/... o cualquier sitio web" />
+        <input type="url" id="url-input" placeholder="https://www.instagram.com/reel/... o cualquier sitio web"
+               oninput="detectInstagram(this.value)" />
+      </div>
+      <!-- Instagram warning + caption field -->
+      <div id="ig-notice" style="display:none; margin-bottom:16px;">
+        <div style="background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.3); border-radius:8px; padding:12px 14px; font-size:13px; color:var(--text2); line-height:1.5;">
+          <strong style="color:var(--accent);">📱 Reel de Instagram detectado</strong><br>
+          Instagram bloquea el acceso automático. Copiá el caption del reel y pegalo acá para que Claude lo analice:
+        </div>
+        <div style="margin-top:10px;">
+          <label>Caption / descripción del reel</label>
+          <textarea id="ig-caption" rows="4" placeholder="Copiá y pegá aquí el texto del reel (caption, descripción, lo que dice en pantalla)..."></textarea>
+        </div>
       </div>
       <div class="input-group">
         <label>Fuente / cuenta (opcional)</label>
@@ -645,6 +657,15 @@ function updateConfigStatus() {
 }
 updateConfigStatus();
 
+// ─── Instagram detection ─────────────────────────────────────────────────────
+function isInstagram(url) {
+  return /instagram\.com/i.test(url);
+}
+function detectInstagram(url) {
+  const show = isInstagram(url);
+  document.getElementById('ig-notice').style.display = show ? '' : 'none';
+}
+
 // Close modal on overlay click
 document.getElementById('settingsModal').addEventListener('click', function(e) {
   if (e.target === this) closeSettings();
@@ -668,8 +689,16 @@ async function processContent() {
       resourceUrl = document.getElementById('url-input').value.trim();
       source = document.getElementById('url-source').value.trim();
       if (!resourceUrl) { showToast('error', '❌ Ingresá una URL'); setLoading(false); return; }
-      setProgress('Obteniendo contenido de la URL...');
-      content = await fetchUrlContent(resourceUrl);
+
+      if (isInstagram(resourceUrl)) {
+        const caption = document.getElementById('ig-caption').value.trim();
+        if (!caption) { showToast('error', '❌ Pegá el caption del reel primero'); setLoading(false); return; }
+        content = caption;
+        setProgress('Analizando reel con Claude...');
+      } else {
+        setProgress('Obteniendo contenido de la URL...');
+        content = await fetchUrlContent(resourceUrl);
+      }
 
     } else if (currentTab === 'youtube') {
       resourceUrl = document.getElementById('yt-input').value.trim();
@@ -879,6 +908,8 @@ function badge(text, color) {
 function resetInputs() {
   document.getElementById('url-input').value = '';
   document.getElementById('url-source').value = '';
+  document.getElementById('ig-caption').value = '';
+  document.getElementById('ig-notice').style.display = 'none';
   document.getElementById('yt-input').value = '';
   document.getElementById('yt-source').value = '';
   document.getElementById('text-input').value = '';
