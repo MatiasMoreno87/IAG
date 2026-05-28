@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📚 Capturador IA → Notion</title>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --border: #2e2e2e;
+      --text: #e8e8e8;
+      --text2: #888;
+      --accent: #f97316;
+      --accent2: #3b82f6;
+      --success: #22c55e;
+      --error: #ef4444;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .logo { font-size: 20px; font-weight: 700; }
+    .logo span { color: var(--accent); }
+    .settings-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .settings-btn:hover { color: var(--text); border-color: var(--accent); }
+
+    .config-status {
+      font-size: 12px;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .status-dot.ok { background: var(--success); }
+    .status-dot.no { background: var(--error); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: var(--surface2);
+      padding: 4px;
+      border-radius: 10px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 4px;
+      background: none;
+      border: none;
+      color: var(--text2);
+      cursor: pointer;
+      border-radius: 7px;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .input-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 11px;
+      color: var(--text2);
+      margin-bottom: 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    input[type="text"],
+    input[type="url"],
+    input[type="password"],
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 120px; line-height: 1.5; }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(249,115,22,0.05);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-icon { font-size: 32px; margin-bottom: 8px; }
+    .drop-text { color: var(--text2); font-size: 14px; }
+    .file-selected { color: var(--accent); font-size: 13px; margin-top: 10px; font-weight: 500; }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-primary:hover:not(:disabled) { background: #ea6c00; }
+    .btn-primary:disabled { background: var(--surface2); color: var(--text2); cursor: not-allowed; }
+
+    .progress {
+      display: none;
+      text-align: center;
+      padding: 24px 0;
+    }
+    .progress.show { display: block; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-text { color: var(--text2); font-size: 14px; }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--success);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .result-card.show { display: block; }
+    .result-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .result-check { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .result-title-text { font-weight: 600; font-size: 15px; line-height: 1.4; }
+    .result-subtitle { color: var(--text2); font-size: 12px; margin-top: 3px; }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .result-field-label {
+      font-size: 10px;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .badge-orange { background: rgba(249,115,22,0.15); color: #fb923c; }
+    .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .badge-purple { background: rgba(168,85,247,0.15); color: #c084fc; }
+    .summary-text { grid-column: 1 / -1; font-size: 13px; color: var(--text2); line-height: 1.6; }
+    .tags-field { grid-column: 1 / -1; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .tag {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text2);
+    }
+    .notion-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      margin-top: 16px;
+      text-decoration: none;
+      color: var(--text2);
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .notion-link:hover { border-color: var(--accent2); color: var(--text); }
+
+    .history-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text2);
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-icon { font-size: 18px; flex-shrink: 0; }
+    .history-info { flex: 1; min-width: 0; }
+    .history-name {
+      font-size: 13px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
+    .empty-history { color: var(--text2); font-size: 13px; text-align: center; padding: 24px 0; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 1000;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+      max-width: 500px;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; margin-top: 24px; }
+    .btn-secondary {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--accent); }
+    .btn-save {
+      flex: 1;
+      background: var(--accent);
+      border: none;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .help-box {
+      font-size: 12px;
+      color: var(--text2);
+      line-height: 1.6;
+      background: var(--surface2);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 4px;
+    }
+    .password-field { position: relative; }
+    .password-field input { padding-right: 42px; }
+    .pw-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 2000;
+      max-width: 320px;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-color: var(--success); }
+    .toast.error { border-color: var(--error); }
+
+    @media (max-width: 480px) {
+      .tabs { overflow-x: auto; }
+      .tab { white-space: nowrap; }
+      .result-grid { grid-template-columns: 1fr; }
+      .summary-text, .tags-field { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">📚 <span>Capturador</span> IA → Notion</div>
+    <button class="settings-btn" onclick="openSettings()">⚙️ Configuración</button>
+  </header>
+
+  <div class="config-status">
+    <span class="status-dot no" id="statusDot"></span>
+    <span id="statusText">Configurá tus API keys para comenzar</span>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('url')" id="tab-url">🔗 URL / Reel</button>
+      <button class="tab" onclick="switchTab('youtube')" id="tab-youtube">▶️ YouTube</button>
+      <button class="tab" onclick="switchTab('pdf')" id="tab-pdf">📄 PDF / Doc</button>
+      <button class="tab" onclick="switchTab('text')" id="tab-text">✍️ Texto</button>
+    </div>
+
+    <!-- URL pane -->
+    <div id="pane-url">
+      <div class="input-group">
+        <label>URL o link del reel</label>
+        <input type="url" id="url-input" placeholder="https://www.instagram.com/reel/... o cualquier sitio web"
+               oninput="detectInstagram(this.value)" />
+      </div>
+      <!-- Instagram warning + caption field -->
+      <div id="ig-notice" style="display:none; margin-bottom:16px;">
+        <div style="background:rgba(249,115,22,0.08); border:1px solid rgba(249,115,22,0.3); border-radius:8px; padding:12px 14px; font-size:13px; color:var(--text2); line-height:1.5;">
+          <strong style="color:var(--accent);">📱 Reel de Instagram detectado</strong><br>
+          Instagram bloquea el acceso automático. Copiá el caption del reel y pegalo acá para que Claude lo analice:
+        </div>
+        <div style="margin-top:10px;">
+          <label>Caption / descripción del reel</label>
+          <textarea id="ig-caption" rows="4" placeholder="Copiá y pegá aquí el texto del reel (caption, descripción, lo que dice en pantalla)..."></textarea>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>Fuente / cuenta (opcional)</label>
+        <input type="text" id="url-source" placeholder="@cuenta_instagram" />
+      </div>
+    </div>
+
+    <!-- YouTube pane -->
+    <div id="pane-youtube" style="display:none">
+      <div class="input-group">
+        <label>URL del video de YouTube</label>
+        <input type="url" id="yt-input" placeholder="https://www.youtube.com/watch?v=..." />
+      </div>
+      <div class="input-group">
+        <label>Canal (opcional)</label>
+        <input type="text" id="yt-source" placeholder="@nombre_canal" />
+      </div>
+    </div>
+
+    <!-- PDF pane -->
+    <div id="pane-pdf" style="display:none">
+      <div class="input-group">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="pdf-input" accept=".pdf,.txt,.md" onchange="handleFile(this)" />
+          <div class="drop-icon">📁</div>
+          <div class="drop-text"><strong>Arrastrá tu archivo aquí</strong> o hacé clic para seleccionar</div>
+          <div class="drop-text" style="font-size:12px;margin-top:4px;">PDF, TXT, Markdown — hasta 20 MB</div>
+          <div class="file-selected" id="fileSelected"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Text pane -->
+    <div id="pane-text" style="display:none">
+      <div class="input-group">
+        <label>Pegá tu texto, prompt o notas</label>
+        <textarea id="text-input" placeholder="Pegá aquí el contenido que querés procesar y guardar en tu biblioteca..."></textarea>
+      </div>
+      <div class="input-group">
+        <label>Título (opcional)</label>
+        <input type="text" id="text-title" placeholder="Ej: Prompt para rúbricas ABP" />
+      </div>
+    </div>
+
+    <button class="btn-primary" id="processBtn" onclick="processContent()">
+      <span>⚡</span>
+      <span id="btnText">Procesar con IA y guardar en Notion</span>
+    </button>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress" id="progress">
+    <div class="spinner"></div>
+    <div class="progress-text" id="progressText">Analizando con Claude...</div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <span class="result-check">✅</span>
+      <div>
+        <div class="result-title-text" id="resultTitle">—</div>
+        <div class="result-subtitle">Guardado en tu Biblioteca Claude IA</div>
+      </div>
+    </div>
+    <div class="result-grid">
+      <div>
+        <div class="result-field-label">Categoría</div>
+        <div id="resultCategoria"></div>
+      </div>
+      <div>
+        <div class="result-field-label">Tipo</div>
+        <div id="resultTipo"></div>
+      </div>
+      <div>
+        <div class="result-field-label">Herramienta IA</div>
+        <div id="resultHerramienta"></div>
+      </div>
+      <div>
+        <div class="result-field-label">Prioridad</div>
+        <div id="resultPrioridad"></div>
+      </div>
+      <div class="summary-text">
+        <div class="result-field-label" style="margin-bottom:5px;">Resumen</div>
+        <div id="resultResumen"></div>
+      </div>
+      <div class="tags-field">
+        <div class="result-field-label">Palabras clave</div>
+        <div class="tags" id="resultTags"></div>
+      </div>
+    </div>
+    <a href="#" class="notion-link" id="notionLink" target="_blank" rel="noopener">
+      <span>📓</span>
+      <span>Ver en Notion</span>
+      <span style="margin-left:auto;font-size:16px;">↗</span>
+    </a>
+  </div>
+
+  <!-- History -->
+  <div class="card">
+    <div class="history-title">Capturas recientes</div>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-title">⚙️ Configuración de API keys</div>
+
+    <div class="input-group">
+      <label>Anthropic API Key</label>
+      <div class="password-field">
+        <input type="password" id="anthropicKey" placeholder="sk-ant-api03-..." />
+        <button class="pw-toggle" onclick="togglePw('anthropicKey')" title="Mostrar/ocultar">👁</button>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <label>Notion Integration Token</label>
+      <div class="password-field">
+        <input type="password" id="notionKey" placeholder="ntn_..." />
+        <button class="pw-toggle" onclick="togglePw('notionKey')" title="Mostrar/ocultar">👁</button>
+      </div>
+    </div>
+
+    <div class="help-box">
+      🔒 Tus keys se guardan <strong>solo en tu navegador</strong> (localStorage). Nunca pasan por ningún servidor externo.<br><br>
+      <strong>Anthropic API Key:</strong> console.anthropic.com → API Keys<br>
+      <strong>Notion Token:</strong> notion.so/my-integrations → New integration → copiá el "Internal Integration Secret" → luego compartí la base de datos "Biblioteca Claude IA" con esa integración.
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeSettings()">Cancelar</button>
+      <button class="btn-save" onclick="saveSettings()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastIcon"></span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────────────────────
+const NOTION_DB_ID = 'dfb9ccf658df4ef4965dc74931c675ad';
+const MODEL = 'claude-haiku-4-5-20251001';
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentTab = 'url';
+let selectedFileContent = null;
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['url', 'youtube', 'pdf', 'text'].forEach(t => {
+    document.getElementById(`pane-${t}`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+  currentTab = tab;
+}
+
+// ─── File handling ───────────────────────────────────────────────────────────
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('fileSelected').textContent = `Cargando ${file.name}...`;
+
+  const reader = new FileReader();
+  if (file.type === 'application/pdf') {
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      selectedFileContent = {
+        type: 'pdf',
+        data: reader.result.split(',')[1],
+        name: file.name
+      };
+      document.getElementById('fileSelected').textContent = `✓ ${file.name}`;
+    };
+  } else {
+    reader.readAsText(file);
+    reader.onload = () => {
+      selectedFileContent = { type: 'text', data: reader.result, name: file.name };
+      document.getElementById('fileSelected').textContent = `✓ ${file.name}`;
+    };
+  }
+}
+
+// Drag & drop
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile({ files: [file] });
+});
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('anthropicKey').value = localStorage.getItem('anthropicKey') || '';
+  document.getElementById('notionKey').value = localStorage.getItem('notionKey') || '';
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+function saveSettings() {
+  const ak = document.getElementById('anthropicKey').value.trim();
+  const nk = document.getElementById('notionKey').value.trim();
+  if (ak) localStorage.setItem('anthropicKey', ak);
+  if (nk) localStorage.setItem('notionKey', nk);
+  closeSettings();
+  updateConfigStatus();
+  showToast('success', '✅ Configuración guardada');
+}
+function togglePw(id) {
+  const el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+function updateConfigStatus() {
+  const ak = localStorage.getItem('anthropicKey');
+  const nk = localStorage.getItem('notionKey');
+  const ok = !!(ak && nk);
+  document.getElementById('statusDot').className = `status-dot ${ok ? 'ok' : 'no'}`;
+  if (ok) {
+    document.getElementById('statusText').textContent = 'Listo para capturar ✓';
+  } else {
+    const missing = [];
+    if (!ak) missing.push('Anthropic API Key');
+    if (!nk) missing.push('Notion Token');
+    document.getElementById('statusText').textContent = `Falta: ${missing.join(' y ')}`;
+  }
+}
+updateConfigStatus();
+
+// ─── Instagram detection ─────────────────────────────────────────────────────
+function isInstagram(url) {
+  return /instagram\.com/i.test(url);
+}
+function detectInstagram(url) {
+  const show = isInstagram(url);
+  document.getElementById('ig-notice').style.display = show ? '' : 'none';
+}
+
+// Close modal on overlay click
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+// ─── Main process ────────────────────────────────────────────────────────────
+async function processContent() {
+  const ak = localStorage.getItem('anthropicKey');
+  const nk = localStorage.getItem('notionKey');
+  if (!ak || !nk) { openSettings(); return; }
+
+  setLoading(true);
+  document.getElementById('resultCard').classList.remove('show');
+
+  try {
+    let content = '';
+    let resourceUrl = '';
+    let source = '';
+
+    if (currentTab === 'url') {
+      resourceUrl = document.getElementById('url-input').value.trim();
+      source = document.getElementById('url-source').value.trim();
+      if (!resourceUrl) { showToast('error', '❌ Ingresá una URL'); setLoading(false); return; }
+
+      if (isInstagram(resourceUrl)) {
+        const caption = document.getElementById('ig-caption').value.trim();
+        if (!caption) { showToast('error', '❌ Pegá el caption del reel primero'); setLoading(false); return; }
+        content = caption;
+        setProgress('Analizando reel con Claude...');
+      } else {
+        setProgress('Obteniendo contenido de la URL...');
+        content = await fetchUrlContent(resourceUrl);
+      }
+
+    } else if (currentTab === 'youtube') {
+      resourceUrl = document.getElementById('yt-input').value.trim();
+      source = document.getElementById('yt-source').value.trim();
+      if (!resourceUrl) { showToast('error', '❌ Ingresá una URL de YouTube'); setLoading(false); return; }
+      setProgress('Extrayendo información del video...');
+      content = await fetchUrlContent(resourceUrl);
+
+    } else if (currentTab === 'pdf') {
+      if (!selectedFileContent) { showToast('error', '❌ Seleccioná un archivo primero'); setLoading(false); return; }
+      content = selectedFileContent.type === 'text' ? selectedFileContent.data : null;
+      source = selectedFileContent.name;
+
+    } else if (currentTab === 'text') {
+      content = document.getElementById('text-input').value.trim();
+      source = document.getElementById('text-title').value.trim() || 'Texto manual';
+      if (!content) { showToast('error', '❌ Pegá algún texto primero'); setLoading(false); return; }
+    }
+
+    setProgress('Analizando con Claude IA...');
+    const extracted = await analyzeWithClaude(ak, content, resourceUrl || source, currentTab);
+
+    setProgress('Guardando en Notion...');
+    const page = await saveToNotion(nk, extracted, resourceUrl, source);
+
+    showResult(extracted, page.url);
+    addToHistory(extracted, page.url);
+    showToast('success', '✅ Guardado en Biblioteca Claude IA');
+    resetInputs();
+
+  } catch (err) {
+    console.error(err);
+    showToast('error', `❌ ${err.message}`);
+  }
+
+  setLoading(false);
+}
+
+// ─── Fetch URL via Jina Reader (CORS-friendly) ───────────────────────────────
+async function fetchUrlContent(url) {
+  const res = await fetch(`https://r.jina.ai/${encodeURIComponent(url)}`, {
+    headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' }
+  });
+  if (!res.ok) throw new Error('No se pudo acceder al contenido de la URL');
+  const text = await res.text();
+  // Trim to avoid token overuse
+  return text.substring(0, 12000);
+}
+
+// ─── Claude analysis ─────────────────────────────────────────────────────────
+async function analyzeWithClaude(apiKey, content, urlOrTitle, tab) {
+  const tabLabel = {
+    url: 'URL o reel de Instagram',
+    youtube: 'Video de YouTube',
+    pdf: 'Documento o PDF',
+    text: 'Texto / prompt escrito manualmente'
+  }[tab];
+
+  const prompt = `Analizá el siguiente contenido de IA y devolvé un JSON con exactamente esta estructura:
+
+{
+  "titulo": "título claro en español, máximo 80 caracteres",
+  "resumen": "2-3 oraciones en español explicando qué enseña o aporta este recurso",
+  "categoria": "una de estas opciones exactas: 🧠 Docencia | 🖨️ MOGA | 💻 Código | 📚 Académico | ⚡ Trucos rápidos | 🔮 Por explorar",
+  "tipo": "uno de estos exactos: 🎬 Reel IG | 💬 Prompt | 📄 Documento/PDF | 🧪 Proyecto/Experimento",
+  "herramienta": "uno de estos: Claude | ChatGPT | Gemini | Midjourney | Otro",
+  "prioridad": "uno de estos exactos: 🔴 Alta | 🟡 Media | 🟢 Baja",
+  "tags": ["tag1", "tag2", "tag3"]
+}
+
+Contexto del usuario:
+- Docente universitario de diseño y tecnología
+- Emprendedor: negocio de impresión DTF/sublimación llamado MOGA
+- Usa IA intensivamente en docencia, diseño y automatización
+- Las categorías MOGA y Docencia son prioridad alta si son aplicables
+- Prioridad Alta = aplicación práctica inmediata en los próximos 7 días
+
+Tipo de entrada: ${tabLabel}
+Referencia: ${urlOrTitle || '(sin URL)'}
+
+Contenido:
+${content ? content.substring(0, 8000) : '(No se pudo extraer el contenido. Inferí a partir de la URL: ' + urlOrTitle + ')'}
+
+Respondé ÚNICAMENTE con el JSON, sin texto adicional.`;
+
+  const messages = [{ role: 'user', content: prompt }];
+
+  // If PDF, use document block
+  if (tab === 'pdf' && selectedFileContent?.type === 'pdf') {
+    messages[0].content = [
+      {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: selectedFileContent.data }
+      },
+      { type: 'text', text: prompt.replace(content || '', '(ver documento adjunto)') }
+    ];
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model: MODEL, max_tokens: 1024, messages })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Error Claude API (${res.status})`);
+  }
+
+  const data = await res.json();
+  const rawText = data.content[0].text.trim();
+
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Claude no devolvió JSON válido');
+
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ─── Notion save ─────────────────────────────────────────────────────────────
+async function saveToNotion(notionKey, extracted, url, source) {
+  const today = new Date().toISOString().split('T')[0];
+
+  const notesParts = [];
+  if (extracted.resumen) notesParts.push(extracted.resumen);
+  if (extracted.tags?.length) notesParts.push(`Tags: ${extracted.tags.join(', ')}`);
+  if (source) notesParts.push(`Fuente: ${source}`);
+
+  const body = {
+    parent: { database_id: NOTION_DB_ID },
+    properties: {
+      'Título': {
+        title: [{ text: { content: (extracted.titulo || 'Sin título').substring(0, 200) } }]
+      },
+      'Categoría': { select: { name: extracted.categoria } },
+      'Tipo': { select: { name: extracted.tipo } },
+      'Estado': { status: { name: 'Sin empezar' } },
+      'Herramienta IA': { select: { name: extracted.herramienta } },
+      'Prioridad': { select: { name: extracted.prioridad } },
+      'Fecha de captura': { date: { start: today } },
+      'Fuente / Cuenta': {
+        rich_text: [{ text: { content: (source || '').substring(0, 200) } }]
+      },
+      'Notas propias': {
+        rich_text: [{ text: { content: notesParts.join('\n\n').substring(0, 2000) } }]
+      }
+    }
+  };
+
+  if (url && url.startsWith('http')) {
+    body.properties['URL / Link'] = { url };
+  }
+
+  const res = await fetch('https://api.notion.com/v1/pages', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${notionKey}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Error Notion API (${res.status})`);
+  }
+
+  return await res.json();
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('progress').classList.toggle('show', on);
+  document.getElementById('processBtn').disabled = on;
+  document.getElementById('btnText').textContent = on
+    ? 'Procesando...'
+    : 'Procesar con IA y guardar en Notion';
+}
+
+function setProgress(text) {
+  document.getElementById('progressText').textContent = text;
+}
+
+function showResult(data, notionUrl) {
+  document.getElementById('resultTitle').textContent = data.titulo || 'Sin título';
+  document.getElementById('resultCategoria').innerHTML = badge(data.categoria, 'blue');
+  document.getElementById('resultTipo').innerHTML = badge(data.tipo, 'orange');
+  document.getElementById('resultHerramienta').innerHTML = badge(data.herramienta, 'purple');
+  document.getElementById('resultPrioridad').innerHTML = badge(data.prioridad, 'green');
+  document.getElementById('resultResumen').textContent = data.resumen || '';
+  document.getElementById('resultTags').innerHTML = (data.tags || [])
+    .map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('notionLink').href = notionUrl;
+  document.getElementById('resultCard').classList.add('show');
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function badge(text, color) {
+  return `<span class="badge badge-${color}">${text || '—'}</span>`;
+}
+
+function resetInputs() {
+  document.getElementById('url-input').value = '';
+  document.getElementById('url-source').value = '';
+  document.getElementById('ig-caption').value = '';
+  document.getElementById('ig-notice').style.display = 'none';
+  document.getElementById('yt-input').value = '';
+  document.getElementById('yt-source').value = '';
+  document.getElementById('text-input').value = '';
+  document.getElementById('text-title').value = '';
+  selectedFileContent = null;
+  document.getElementById('fileSelected').textContent = '';
+}
+
+function addToHistory(data, notionUrl) {
+  const history = JSON.parse(localStorage.getItem('captureHistory') || '[]');
+  history.unshift({ ...data, notionUrl, savedAt: new Date().toISOString() });
+  localStorage.setItem('captureHistory', JSON.stringify(history.slice(0, 30)));
+  renderHistory();
+}
+
+const TYPE_ICONS = {
+  '🎬 Reel IG': '🎬',
+  '💬 Prompt': '💬',
+  '📄 Documento/PDF': '📄',
+  '🧪 Proyecto/Experimento': '🧪'
+};
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem('captureHistory') || '[]');
+  const el = document.getElementById('historyList');
+  if (!history.length) {
+    el.innerHTML = '<div class="empty-history">Todavía no capturaste nada.<br>¡Empezá pegando una URL arriba!</div>';
+    return;
+  }
+  el.innerHTML = history.slice(0, 10).map(item => {
+    const icon = TYPE_ICONS[item.tipo] || '📌';
+    const date = new Date(item.savedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    return `<div class="history-item">
+      <span class="history-icon">${icon}</span>
+      <div class="history-info">
+        <div class="history-name">${item.titulo || 'Sin título'}</div>
+        <div class="history-meta">${item.categoria || ''} · ${date}</div>
+      </div>
+      <a href="${item.notionUrl}" target="_blank" rel="noopener"
+         style="color:var(--text2);text-decoration:none;font-size:18px;flex-shrink:0;">↗</a>
+    </div>`;
+  }).join('');
+}
+renderHistory();
+
+function showToast(type, msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastIcon').textContent = type === 'success' ? '✅' : '❌';
+  document.getElementById('toastMsg').textContent = msg;
+  toast.className = `toast ${type} show`;
+  setTimeout(() => toast.classList.remove('show'), 4000);
+}
+</script>
+</body>
+</html>
